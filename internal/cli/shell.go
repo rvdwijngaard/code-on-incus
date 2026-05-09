@@ -171,6 +171,13 @@ func shellCommand(cmd *cobra.Command, args []string) error {
 			isWorkspaceSessionTool = true
 		}
 	}
+	if toolInstance.Name() == "pi" {
+		// pi sessions are redirected to workspace .pi-sessions/ via PI_CODING_AGENT_SESSION_DIR
+		workspaceSessionDir := filepath.Join(absWorkspace, ".pi-sessions")
+		if info, err := os.Stat(workspaceSessionDir); err == nil && info.IsDir() {
+			isWorkspaceSessionTool = true
+		}
+	}
 
 	// Auto-detect if flag was set but value is empty or "auto"
 	if resumeFlagSet && (resumeID == "" || resumeID == "auto") {
@@ -197,10 +204,17 @@ func shellCommand(cmd *cobra.Command, args []string) error {
 
 	// When resuming, inherit persistent flag and original slot from the session
 	// unless explicitly overridden by the user.
-	// Skip for workspace-session tools (they don't have COI metadata files)
 	var resumeSlot int // Original slot from session metadata (0 = not set)
-	if resumeID != "" && !isWorkspaceSessionTool {
-		metadataPath := filepath.Join(sessionsDir, resumeID, "metadata.json")
+	if resumeID != "" {
+		// For workspace-session tools, resumeID is synthetic ("workspace-session").
+		// Look up the real latest session for this workspace to get slot/persistent/profile.
+		metadataSessionID := resumeID
+		if isWorkspaceSessionTool {
+			if realID, err := session.GetLatestSessionForWorkspace(sessionsDir, absWorkspace); err == nil {
+				metadataSessionID = realID
+			}
+		}
+		metadataPath := filepath.Join(sessionsDir, metadataSessionID, "metadata.json")
 		if metadata, err := session.LoadSessionMetadata(metadataPath); err == nil {
 			// Inherit profile if not explicitly set by user
 			if !cmd.Flags().Changed("profile") && metadata.ProfileName != "" {
