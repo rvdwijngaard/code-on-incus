@@ -4,7 +4,7 @@ Test auto-context injection for pi.
 Verifies that:
 1. When auto_context is enabled (default) and tool is pi, the
    AGENTS.md file is created in ~/.pi/agent/ with the sandbox context.
-2. settings.json remains unchanged (pi has no permission bypass system).
+2. settings.json remains valid (pi has no permission bypass system).
 """
 
 import json
