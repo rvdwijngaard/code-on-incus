@@ -68,11 +68,34 @@ func infoCommand(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(os.Stderr, "Warning: No metadata found\n")
 	}
 
-	// Check if .claude directory exists
-	statePath := filepath.Join(sessionDir, ".claude")
-	claudeExists := false
-	if info, err := os.Stat(statePath); err == nil && info.IsDir() {
-		claudeExists = true
+	// Check if tool config directory exists in the saved session
+	// Each tool has its own config dir name (e.g., .claude, .pi/agent, .config/opencode)
+	configDirName := toolInstance.ConfigDirName()
+	var configDirExists bool
+	var statePath string
+	if configDirName != "" {
+		statePath = filepath.Join(sessionDir, configDirName)
+		if info, err := os.Stat(statePath); err == nil && info.IsDir() {
+			configDirExists = true
+		}
+	}
+
+	// For workspace-session tools (pi, opencode), session data lives in the workspace
+	// rather than in ~/.coi/sessions-*/. Check workspace if metadata has it.
+	var workspaceSessionExists bool
+	var workspaceSessionDir string
+	if metadata.Workspace != "" {
+		switch toolInstance.Name() {
+		case "pi":
+			workspaceSessionDir = filepath.Join(metadata.Workspace, ".pi-sessions")
+		case "opencode":
+			workspaceSessionDir = filepath.Join(metadata.Workspace, ".opencode")
+		}
+		if workspaceSessionDir != "" {
+			if info, err := os.Stat(workspaceSessionDir); err == nil && info.IsDir() {
+				workspaceSessionExists = true
+			}
+		}
 	}
 
 	// Display information
@@ -89,14 +112,21 @@ func infoCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("Session Data:   ")
-	if claudeExists {
-		fmt.Printf("✓ Present (.claude directory)\n")
+	if workspaceSessionExists {
+		fmt.Printf("✓ Present (workspace: %s)\n", workspaceSessionDir)
+	} else if configDirExists {
+		fmt.Printf("✓ Present (%s directory)\n", configDirName)
 	} else {
 		fmt.Printf("✗ Missing\n")
 	}
 
 	// Show directory size
-	if claudeExists {
+	if workspaceSessionExists {
+		size, err := getDirSize(workspaceSessionDir)
+		if err == nil {
+			fmt.Printf("Data Size:      %s\n", formatBytes(size))
+		}
+	} else if configDirExists {
 		size, err := getDirSize(statePath)
 		if err == nil {
 			fmt.Printf("Data Size:      %s\n", formatBytes(size))

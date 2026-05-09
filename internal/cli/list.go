@@ -65,20 +65,24 @@ func listCommand(cmd *cobra.Command, args []string) error {
 
 	// Build maps of container name -> workspace and container name -> persistent from saved sessions
 	// We search for metadata.json files directly (not using listSavedSessions which requires .claude dir)
-	// because metadata is saved early at session start, before .claude directory exists
+	// because metadata is saved early at session start, before .claude directory exists.
+	// Scan ALL sessions-* directories (not just the current tool's) so containers launched
+	// with --tool <other> are correctly shown as persistent/ephemeral.
 	containerWorkspaces := make(map[string]string)
 	containerPersistent := make(map[string]bool)
-	if entries, err := os.ReadDir(sessionsDir); err == nil {
-		for _, entry := range entries {
-			if !entry.IsDir() {
-				continue
-			}
-			metadataPath := filepath.Join(sessionsDir, entry.Name(), "metadata.json")
-			if data, err := os.ReadFile(metadataPath); err == nil {
-				var metadata session.SessionMetadata
-				if err := json.Unmarshal(data, &metadata); err == nil && metadata.ContainerName != "" {
-					containerWorkspaces[metadata.ContainerName] = metadata.Workspace
-					containerPersistent[metadata.ContainerName] = metadata.Persistent
+	for _, dir := range session.GetAllSessionsDirs(baseDir) {
+		if entries, err := os.ReadDir(dir); err == nil {
+			for _, entry := range entries {
+				if !entry.IsDir() {
+					continue
+				}
+				metadataPath := filepath.Join(dir, entry.Name(), "metadata.json")
+				if data, err := os.ReadFile(metadataPath); err == nil {
+					var metadata session.SessionMetadata
+					if err := json.Unmarshal(data, &metadata); err == nil && metadata.ContainerName != "" {
+						containerWorkspaces[metadata.ContainerName] = metadata.Workspace
+						containerPersistent[metadata.ContainerName] = metadata.Persistent
+					}
 				}
 			}
 		}
