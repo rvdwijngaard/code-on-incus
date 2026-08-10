@@ -481,6 +481,43 @@ install_pi() {
 }
 
 #######################################
+# Install omp (AI coding agent — fork of pi)
+# See: https://omp.sh
+#
+# Installed via the official install script from https://omp.sh/install.
+# The installer auto-detects bun vs the prebuilt binary; we don't pin
+# either, so the install works on fresh images without bun too.
+#######################################
+install_omp() {
+    log "Installing omp..."
+
+    # Install as the code user via the official installer
+    local attempt
+    for attempt in 1 2 3; do
+        if su - "$CODE_USER" -c 'curl -fsSL https://omp.sh/install | sh'; then
+            break
+        fi
+        if [ "$attempt" -eq 3 ]; then
+            log "ERROR: omp installation failed after 3 attempts."
+            exit 1
+        fi
+        log "omp install failed (attempt $attempt/3), retrying in 10s..."
+        sleep 10
+    done
+
+    # Ensure omp is available system-wide for non-login/non-interactive shells
+    local OMP_BIN
+    OMP_BIN="$(su - "$CODE_USER" -c 'which omp' 2>/dev/null || true)"
+    if [[ -z "$OMP_BIN" ]]; then
+        log "ERROR: omp binary not found after installation."
+        exit 1
+    fi
+    ln -sf "$OMP_BIN" /usr/local/bin/omp
+
+    log "omp $(su - "$CODE_USER" -c 'omp --version' 2>/dev/null || echo 'installed')"
+}
+
+#######################################
 # Install dummy (test stub for testing)
 #######################################
 install_dummy() {
@@ -673,12 +710,13 @@ cleanup() {
 # preserving the historical behavior (issue #454). Unknown names are warned and skipped
 # (coi validates the list host-side before build, so this is defense-in-depth).
 install_selected_agents() {
-    local agents="${COI_AGENTS:-claude opencode pi}"
+    local agents="${COI_AGENTS:-claude opencode pi omp}"
     for agent in ${agents//,/ }; do
         case "$agent" in
             claude) install_claude_cli ;;
             opencode) install_opencode ;;
             pi) install_pi ;;
+            omp) install_omp ;;
             "") ;;
             *) log "WARNING: unknown agent '$agent' in COI_AGENTS, skipping" ;;
         esac

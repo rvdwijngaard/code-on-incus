@@ -22,7 +22,7 @@
 # [container.build]              # how `coi build` builds the base image
 # base = "ubuntu:24.04"          # base image to build from
 # compression = "none"          # image compression: none | gzip | xz ("" = Incus default)
-# agents = ["claude"]            # AI agents to install (subset of claude/opencode/pi);
+# agents = ["claude"]            # AI agents to install (subset of claude/opencode/pi/omp);
 #                                #   omit to install all supported agents (the default)
 
 [defaults]
@@ -71,7 +71,7 @@
 # path = "~/.coi/logs/network.log"
 
 [tool]
-# name = "claude"                # claude | opencode
+# name = "claude"                # claude | opencode | pi | omp
 # auto_context = true            # inject SANDBOX_CONTEXT.md into the tool
 
 # [tool.claude]

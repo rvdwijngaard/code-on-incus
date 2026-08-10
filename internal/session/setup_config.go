@@ -4,10 +4,31 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/mensfeld/code-on-incus/internal/container"
 	"github.com/mensfeld/code-on-incus/internal/tool"
 )
+
+// chownConfigParent chowns the top-level parent directory of a nested config dir
+// so that sibling directories are writable by the code user. For example, when
+// configDirName is ".omp/agent", mkdir -p creates both .omp/ and .omp/agent/ as
+// root; the recursive chown on .omp/agent/ does not cover .omp/ itself, leaving
+// siblings like .omp/natives/ uncreatable by the code user.
+//
+// This is a no-op when configDirName has no path separator (e.g., ".claude").
+func chownConfigParent(mgr container.ContainerExecution, homeDir, configDirName string) error {
+	if !strings.Contains(configDirName, string(filepath.Separator)) {
+		return nil
+	}
+	topLevel := strings.SplitN(configDirName, string(filepath.Separator), 2)[0]
+	parentDir := filepath.Join(homeDir, topLevel)
+	chownCmd := fmt.Sprintf("chown %d:%d %s", container.CodeUID, container.CodeUID, parentDir)
+	if _, err := mgr.ExecCommand(chownCmd, container.ExecCommandOptions{Capture: true}); err != nil {
+		return fmt.Errorf("failed to set ownership on %s: %w", parentDir, err)
+	}
+	return nil
+}
 
 // readContainerFile reads a file from inside the container via cat
 func readContainerFile(mgr container.ContainerExecution, path string) ([]byte, error) {
@@ -44,6 +65,9 @@ func restoreSessionData(mgr container.ContainerManager, resumeID, homeDir, sessi
 		statePath := destConfigPath
 		if err := mgr.Chown(statePath, container.CodeUID, container.CodeUID); err != nil {
 			return fmt.Errorf("failed to set ownership: %w", err)
+		}
+		if err := chownConfigParent(mgr, homeDir, configDirName); err != nil {
+			return fmt.Errorf("failed to set parent ownership: %w", err)
 		}
 	}
 
@@ -137,6 +161,9 @@ func injectCredentials(mgr container.ContainerManager, hostCLIConfigPath, homeDi
 		if _, err := mgr.ExecCommand(chownCmd, container.ExecCommandOptions{Capture: true}); err != nil {
 			logger(fmt.Sprintf("Warning: Failed to set %s directory ownership: %v", configDirName, err))
 		}
+		if err := chownConfigParent(mgr, homeDir, configDirName); err != nil {
+			logger(fmt.Sprintf("Warning: Failed to set parent directory ownership: %v", err))
+		}
 
 		// Also fix state config file ownership if it was copied
 		if stateConfigFilename != "" && hostCLIConfigPath != "" {
@@ -220,6 +247,9 @@ func setupCLIConfig(mgr container.ContainerManager, hostCLIConfigPath, homeDir s
 			if _, err := mgr.ExecCommand(chownCmd, container.ExecCommandOptions{Capture: true}); err != nil {
 				return fmt.Errorf("failed to set %s directory ownership: %w", configDirName, err)
 			}
+			if err := chownConfigParent(mgr, homeDir, configDirName); err != nil {
+				return fmt.Errorf("failed to set parent directory ownership: %w", err)
+			}
 		}
 		return nil
 	}
@@ -272,6 +302,9 @@ func setupCLIConfig(mgr container.ContainerManager, hostCLIConfigPath, homeDir s
 			chownCmd := fmt.Sprintf("chown -R %d:%d %s", container.CodeUID, container.CodeUID, stateDir)
 			if _, err := mgr.ExecCommand(chownCmd, container.ExecCommandOptions{Capture: true}); err != nil {
 				return fmt.Errorf("failed to set %s directory ownership: %w", configDirName, err)
+			}
+			if err := chownConfigParent(mgr, homeDir, configDirName); err != nil {
+				return fmt.Errorf("failed to set parent directory ownership: %w", err)
 			}
 		}
 

@@ -37,6 +37,7 @@ tmp/
 
 # IDE
 .idea/
+.claude/
 .vscode/
 *.swp
 *.swo
@@ -56,6 +57,9 @@ test-config.toml
 
 # pi session data (created when running pi in workspace)
 .pi-sessions/
+
+# omp session data (created when running omp in workspace)
+.omp-agent/
 
 # Backup files
 *.bck.yml

@@ -6,7 +6,7 @@ import (
 )
 
 func TestLookup_KnownBundles(t *testing.T) {
-	for _, name := range []string{"claude", "opencode", "pi", "ollama"} {
+	for _, name := range []string{"claude", "opencode", "pi", "omp", "ollama"} {
 		if _, ok := Lookup(name); !ok {
 			t.Errorf("Lookup(%q): expected bundle to exist", name)
 		}
@@ -21,8 +21,8 @@ func TestLookup_UnknownBundle(t *testing.T) {
 
 func TestNames_Sorted(t *testing.T) {
 	names := Names()
-	if !reflect.DeepEqual(names, []string{"claude", "ollama", "opencode", "pi"}) {
-		t.Errorf("Names() = %v, want sorted [claude ollama opencode pi]", names)
+	if !reflect.DeepEqual(names, []string{"claude", "ollama", "omp", "opencode", "pi"}) {
+		t.Errorf("Names() = %v, want sorted [claude ollama omp opencode pi]", names)
 	}
 }
 
@@ -88,6 +88,31 @@ func TestPiBundle_MatchesHardcodedValues(t *testing.T) {
 		t.Errorf("ConfigDir = %q, want %q", b.ConfigDir, ".pi/agent")
 	}
 	want := []string{"settings.json", "models.json", "auth.json", "AGENTS.md"}
+	if !reflect.DeepEqual(b.Files, want) {
+		t.Errorf("Files = %v, want %v", b.Files, want)
+	}
+	if b.SandboxSettingsFile != "settings.json" {
+		t.Errorf("SandboxSettingsFile = %q, want %q", b.SandboxSettingsFile, "settings.json")
+	}
+	if b.StateFile != "" {
+		t.Errorf("StateFile = %q, want empty", b.StateFile)
+	}
+	if !b.AlwaysSetup {
+		t.Error("AlwaysSetup = false, want true")
+	}
+}
+
+func TestOmpBundle_MatchesHardcodedValues(t *testing.T) {
+	b, ok := Lookup("omp")
+	if !ok {
+		t.Fatal("omp bundle not found")
+	}
+	if b.ConfigDir != ".omp/agent" {
+		t.Errorf("ConfigDir = %q, want %q", b.ConfigDir, ".omp/agent")
+	}
+	// omp stores credentials in agent.db (SQLite), not auth.json — deliberately
+	// excluded so we don't copy a stale host DB that would orphan oauth tokens.
+	want := []string{"settings.json", "models.json", "AGENTS.md"}
 	if !reflect.DeepEqual(b.Files, want) {
 		t.Errorf("Files = %v, want %v", b.Files, want)
 	}

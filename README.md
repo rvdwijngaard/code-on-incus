@@ -67,6 +67,7 @@ Currently supported:
 - **Claude Code** (default) - Anthropic's official CLI tool
 - **opencode** - Open-source AI coding agent (https://opencode.ai)
 - **pi** - AI coding assistant (https://pi.dev)
+- **omp** - Oh My Pi, a fork of pi with batteries-included extras (https://omp.sh)
 
 Coming soon:
 - Aider - AI pair programming in your terminal
@@ -77,8 +78,9 @@ Coming soon:
 ```toml
 # ~/.coi/config.toml or ./.coi/config.toml
 [tool]
-name = "opencode"            # or "claude" (default), "pi"
+name = "opencode"            # or "claude" (default), "pi", "omp"
 ```
+
 ```bash
 coi shell                    # Uses the configured tool (Claude Code by default)
 coi shell --profile opencode # Or switch via a profile with [tool] name = "opencode"
@@ -109,11 +111,11 @@ See the [Supported Tools wiki page](https://github.com/mensfeld/code-on-incus/wi
 - SSH agent forwarding - Use git-over-SSH inside containers without copying private keys (`[ssh] forward_agent = true`)
 - Host port publishing - Publish container TCP ports on the host (`[ports] pool` for identity-mapped agent-usable ports, `[[ports.map]]` for fixed services): agent-started dev servers become reachable at `localhost:<port>`, with per-slot deterministic allocation, a pre-launch conflict check, and `coi trust` gating for untrusted project configs
 - Host socket forwarding - Forward arbitrary host Unix sockets into the container (`[[sockets]]`) so the host endpoint never enters the container — the building block for credential brokers (mint short-lived tokens on the host, fetch them on demand inside). Untrusted project-config sockets are gated behind `coi trust`
-- Credential catalog - Copy third-party provider credentials into the container via `[[credentials]]` entries (config or profile): reference a named catalog bundle (`bundle = "ollama"`) or declare an ad-hoc host/container file pair for anything not yet cataloged. `claude`/`opencode`/`pi`'s own credential files come from the same built-in catalog. Ad-hoc entries from an untrusted project `.coi/config.toml` are gated behind `coi trust`; catalog references carry the same trust level the built-in tool credentials already have
+- Credential catalog - Copy third-party provider credentials into the container via `[[credentials]]` entries (config or profile): reference a named catalog bundle (`bundle = "ollama"`) or declare an ad-hoc host/container file pair for anything not yet cataloged. `claude`/`opencode`/`pi`/`omp`'s own credential files come from the same built-in catalog. Ad-hoc entries from an untrusted project `.coi/config.toml` are gated behind `coi trust`; catalog references carry the same trust level the built-in tool credentials already have
 - Environment variable forwarding - Selectively forward host env vars by name (`forward_env` in config)
 - Command-sourced env vars - Mint a fresh secret per session by running a host command at start and injecting its output as an env var (`[defaults.env_commands]`) — for short-lived API keys/tokens. Trusted-scope config only
 - Host timezone inheritance - Containers automatically inherit the host's timezone (configurable via `[timezone]` config)
-- Sandbox context file - Auto-injected `~/SANDBOX_CONTEXT.md` tells AI tools about their environment (network mode, workspace path, persistence, etc.). Automatically loaded into each tool's native context system: Claude Code via `~/.claude/CLAUDE.md`, OpenCode via the `instructions` field in `opencode.json`, pi via `~/.pi/agent/APPEND_SYSTEM.md` symlink (opt out with `auto_context = false`)
+- Sandbox context file - Auto-injected `~/SANDBOX_CONTEXT.md` tells AI tools about their environment (network mode, workspace path, persistence, etc.). Automatically loaded into each tool's native context system: Claude Code via `~/.claude/CLAUDE.md`, OpenCode via the `instructions` field in `opencode.json`, pi via `~/.pi/agent/APPEND_SYSTEM.md` symlink, omp via `~/.omp/agent/APPEND_SYSTEM.md` symlink (opt out with `auto_context = false`)
 
 **Security & Isolation**
 - Credential protection - SSH keys, `.env` files, Git credentials, and environment variables are **never** exposed unless explicitly mounted

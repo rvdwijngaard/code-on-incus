@@ -66,7 +66,7 @@ func TestPrepareBuildAgents(t *testing.T) {
 
 	// A selection that includes the configured tool is fine (warn is non-fatal
 	// anyway; here it must not fire and must not error).
-	if err := prepareBuildAgents([]string{"claude", "pi"}, "claude"); err != nil {
+	if err := prepareBuildAgents([]string{"claude", "pi", "omp"}, "claude"); err != nil {
 		t.Errorf("valid selection must not error, got %v", err)
 	}
 
